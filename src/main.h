@@ -9,10 +9,25 @@
 #include <sys/unistd.h>
 #include <time.h>
 
-uint32_t pixelColor(uint8_t r, uint8_t g, uint8_t b, struct fb_var_screeninfo* vinfo); 
+/***********/
+/* Globals */
+/***********/
 
-void delay(int number_of_seconds);
+struct fb_var_screeninfo vinfo;
+struct fb_fix_screeninfo finfo;
+int fb_fd;
+uint8_t* fbp;      
 
-void drawPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t* fbp,
-	       struct fb_var_screeninfo* vinfo,
-	       struct fb_fix_screeninfo* finfo);
+/*********************/
+/* Drawing Utilities */
+/*********************/
+
+void drawPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b);
+void drawLine(int x1, int y1, int x2, int y2, uint8_t r, uint8_t g, uint8_t b);
+
+/*****************/
+/* Miscellaneous */
+/*****************/
+
+uint32_t pixelColor(uint8_t r, uint8_t g, uint8_t b);
+void delay(int number_of_seconds); 

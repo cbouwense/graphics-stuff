@@ -2,10 +2,7 @@
 
 int main() {
 
-  struct fb_fix_screeninfo finfo;
-  struct fb_var_screeninfo vinfo;
-
-  int fb_fd = open("/dev/fb0", O_RDWR);
+  fb_fd = open("/dev/fb0", O_RDWR);
 
   // Get variable screen info
   ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo);
@@ -20,15 +17,11 @@ int main() {
   long screensize = finfo.smem_len;
 
   // Map the buffer to memory, returns ptr to memory
-  uint8_t* fbp = mmap(NULL, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
+  fbp = mmap(NULL, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
 
-  int x, y;
-  for (x = 0; x < vinfo.xres; x++ ) {
-    for (y = 0; y < vinfo.yres; y++) {
-      long location = (x+vinfo.xoffset) * (vinfo.bits_per_pixel/8) + (y+vinfo.yoffset) * finfo.line_length;
-      *((uint32_t*)(fbp + location)) = pixelColor(0x00, 0xFF, 0x00, &vinfo);
-    }
-  }
+  /* Tests */
+
+  drawPixel(10, 10, 0x00, 0xFF, 0x00);
 
   return 0;
 }
@@ -37,21 +30,29 @@ int main() {
 /* Drawing utilities */
 /*********************/
 
-void drawPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t* fbp,
-		    struct fb_var_screeninfo* vinfo, 
-		    struct fb_fix_screeninfo* finfo) {
-  long loc = (x+vinfo->xoffset) * (vinfo->bits_per_pixel/8) + (y+vinfo->yoffset) * finfo->line_length; 
-  *((uint32_t*)(fbp + loc)) = pixelColor(0x00, 0xFF, 0x00, vinfo);
+void drawPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+  long loc = (x+(&vinfo)->xoffset) * ((&vinfo)->bits_per_pixel/8) + (y+(&vinfo)->yoffset) * (&finfo)->line_length; 
+  *((uint32_t*)(fbp + loc)) = pixelColor(r, g, b);
 }
 
-// Convert rbg value to pixel value
-uint32_t pixelColor(uint8_t r, uint8_t g, uint8_t b, struct fb_var_screeninfo* vinfo) {
-  return (r<<vinfo->red.offset) | (g<<vinfo->green.offset) | (b<<vinfo->blue.offset);
-}
+void drawLine(int x1, int y1, int x2, int y2, uint8_t r, uint8_t g, uint8_t b) {
+
+  // Calculate slope
+  float slope = (y2 - y1) / (x2 - x1);
+
+  // Fill source and destination
+  drawPixel(x1, y1, r, g, b);
+
+}	
 
 /*****************/
 /* Miscellaneous */
 /*****************/
+
+// Convert rbg value to pixel value
+uint32_t pixelColor(uint8_t r, uint8_t g, uint8_t b) {
+  return (r<<(&vinfo)->red.offset) | (g<<(&vinfo)->green.offset) | (b<<(&vinfo)->blue.offset);
+}
 
 void delay(int number_of_seconds) 
 { 
