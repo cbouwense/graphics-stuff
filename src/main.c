@@ -21,7 +21,11 @@ int main() {
 
   /* Tests */
 
-  drawPixel(10, 10, 0x00, 0xFF, 0x00);
+  drawLine(1000, 500, 1000, 700, 0xFF, 0x00, 0x00);
+  drawLine(1250, 500, 1250, 700, 0x00, 0xFF, 0x00);
+  drawLine(900, 600, 1000, 800, 0x00, 0x00, 0xFF);
+  drawLine(1000, 800, 1250, 800, 0x00, 0x00, 0xFF);
+  drawLine(1250, 800, 1350, 600, 0x00, 0x00, 0xFF);  
 
   return 0;
 }
@@ -37,17 +41,140 @@ void drawPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
 
 void drawLine(int x1, int y1, int x2, int y2, uint8_t r, uint8_t g, uint8_t b) {
 
-  // Calculate slope
-  float slope = (y2 - y1) / (x2 - x1);
+  // Calculate slope of src and dest
+  float realSlope = slope(x1, y1, x2, y2); 
 
   // Fill source and destination
   drawPixel(x1, y1, r, g, b);
+  drawPixel(x2, y2, r, g, b);
+
+  // While we haven't gotten adjacent to the destination
+  while (!isDestAdjacent(x1, y1, x2, y2)) {
+    
+    float minSlopeDiff = INFINITY;
+    int minSlopeX, minSlopeY;    
+
+    // Find the px with the least slope 
+    if (x1 < x2 && y1 < y2) {
+      float slopeDiffs[3];
+      slopeDiffs[0] = fabsf(slope(x1+1, y1, x2, y2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(x1, y1+1, x2, y2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(x1+1, y1+1, x2, y2) - realSlope);
+     
+      if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
+        minSlopeX = x1+1;
+	minSlopeY = y1;
+      }
+      else if (slopeDiffs[1] < slopeDiffs[2]) {
+        minSlopeX = x1;
+	minSlopeY = y1+1;
+      }
+      else {
+        minSlopeX = x1+1;
+	minSlopeY = y1+1;
+      }
+    }
+    else if (x1 > x2 && y1 < y2) {
+      float slopeDiffs[3];
+      slopeDiffs[0] = fabsf(slope(x1-1, y1, x2, y2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(x1, y1+1, x2, y2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(x1-1, y1+1, x2, y2) - realSlope);
+      
+      if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
+        minSlopeX = x1-1;
+	minSlopeY = y1;
+      }
+      else if (slopeDiffs[1] < slopeDiffs[2]) {
+        minSlopeX = x1;
+	minSlopeY = y1+1;
+      }
+      else {
+        minSlopeX = x1-1;
+	minSlopeY = y1+1;
+      }
+    }
+    else if (x1 > x2 && y1 > y2) {
+      float slopeDiffs[3];
+      slopeDiffs[0] = fabsf(slope(x1-1, y1, x2, y2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(x1, y1-1, x2, y2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(x1-1, y1-1, x2, y2) - realSlope);
+      
+      if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
+        minSlopeX = x1-1;
+	minSlopeY = y1;
+      }
+      else if (slopeDiffs[1] < slopeDiffs[2]) {
+        minSlopeX = x1;
+	minSlopeY = y1-1;
+      }
+      else {
+        minSlopeX = x1-1;
+	minSlopeY = y1-1;
+      }
+    }
+    else if (x1 < x2 && y1 > y2) {
+      float slopeDiffs[3];
+      slopeDiffs[0] = fabsf(slope(x1+1, y1, x2, y2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(x1, y1-1, x2, y2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(x1+1, y1-1, x2, y2) - realSlope);
+      
+      if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
+        minSlopeX = x1+1;
+	minSlopeY = y1;
+      }
+      else if (slopeDiffs[1] < slopeDiffs[2]) {
+        minSlopeX = x1;
+	minSlopeY = y1-1;
+      }
+      else {
+        minSlopeX = x1+1;
+	minSlopeY = y1-1;
+      }
+    }
+    else if (x1 < x2) {
+      minSlopeX = x1+1;
+      minSlopeY = y1;
+    }
+    else if (x1 > x2) {
+      minSlopeX = x1-1;
+      minSlopeY = y1;
+    }
+    else if (y1 < y2) {
+      minSlopeX = x1;
+      minSlopeY = y1+1;
+    }
+    else if (y1 > y2) {
+      minSlopeX = x1;
+      minSlopeY = y1-1;
+    }
+
+    x1 = minSlopeX;
+    y1 = minSlopeY;
+
+    // Color the px with the min diff
+    drawPixel(x1, y1, r, g, b);
+
+  }
 
 }	
 
 /*****************/
 /* Miscellaneous */
 /*****************/
+
+float slope(int x1, int y1, int x2, int y2) {
+  if (x1 == x2) {
+    return INFINITY;
+  }
+  else {
+    return (float)(y2 - y1) / (float)(x2 - x1);
+  }
+}
+
+// Checks if destination px is adjacent to source px
+int isDestAdjacent(int x1, int y1, int x2, int y2) {
+  return (abs(x1 - x2) <= 1) && (abs(y1 - y2) <= 1);
+}
 
 // Convert rbg value to pixel value
 uint32_t pixelColor(uint8_t r, uint8_t g, uint8_t b) {
