@@ -38,14 +38,16 @@ uint8_t* fbp;
 void drawPixel(Pixel p, Color c);
 void drawLine(Pixel p1, Pixel p2, Color c);
 void drawTriangle(Pixel p1, Pixel p2, Pixel p3, Color c);
+void fillTriangle(Pixel p1, Pixel p2, Pixel p3, Color c);
 
 /*****************/
 /* Miscellaneous */
 /*****************/
 
+Pixel minSlope(Pixel p1, Pixel p2);
 Color makeColor(uint8_t r, uint8_t g, uint8_t b);
 Pixel makePixel(int x, int y);
 float slope(Pixel p1, Pixel p2);
-int isDestAdjacent(Pixel p1, Pixel p2);
+int isAdjacent(Pixel p1, Pixel p2);
 uint32_t pixelColor(Color c);
 void delay(int number_of_seconds); 
