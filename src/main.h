@@ -55,12 +55,16 @@ void drawPixel(Pixel p);
 void drawLine(Line l);
 void drawTriangle(Triangle t);
 void fillTriangle(Triangle t);
-void rotateTriangle(Triangle t, float rad, Line axis, int direction);
+Triangle rotateTriangle(Triangle t, float rad, Line axis, int direction);
 
 /*****************/
 /* Miscellaneous */
 /*****************/
 
+
+float dist(Pixel p1, Pixel p2);
+int pixelInLine(Pixel p, Line l);
+float pixelToLineDist(Pixel p, Line l);
 Color makeColor(uint8_t r, uint8_t g, uint8_t b);
 Pixel makePixel(int x, int y, Color c);
 Line makeLine(Pixel p1, Pixel p2, Color c);

@@ -31,13 +31,7 @@ int main() {
   Triangle t1 = makeTriangle(l1, l2, l3, red);
   fillTriangle(t1);
 
-  /*
-  drawLine(1000, 500, 1000, 700, 0xFF, 0x00, 0x00);
-  drawLine(1250, 500, 1250, 700, 0x00, 0xFF, 0x00);
-  drawLine(900, 600, 1000, 800, 0x00, 0x00, 0xFF);
-  drawLine(1000, 800, 1250, 800, 0x00, 0x00, 0xFF);
-  drawLine(1250, 800, 1350, 600, 0x00, 0x00, 0xFF);  
-  */
+  printf("pixelToLineDist 50: %f\n", pixelToLineDist(makePixel(1100, 550, NULL), l1));
 
   return 0;
 }
@@ -101,16 +95,42 @@ void fillTriangle(Triangle t) {
   } while(!isAdjacent(nextP1P2, p2) || !isAdjacent(nextP1P3, p3));
 }
 
-void rotateTriangle(Triangle t, float rad, Line axis, int direction) {
-   
+Triangle rotateTriangle(Triangle t, float rad, Line axis, int direction) {
+  return NULL;     
 }
 
 /*****************/
 /* Miscellaneous */
 /*****************/
 
+float dist(Pixel p1, Pixel p2) {
+  return sqrt(pow(p2->x - p1->x, 2.0) + pow(p2->y - p1->y, 2.0));
+}
+
+int pixelInLine(Pixel p, Line l) {
+  return slope(p, l->p1) == slope(p, l->p2);
+}
+
+float pixelToLineDist(Pixel p, Line l) {
+  float lineSlope = slope(l->p1, l->p2);
+  
+  if (lineSlope == 0.0) {
+    return fabsf(l->p1->y - p->y);
+  }
+  else if (lineSlope == INFINITY || lineSlope == -INFINITY) {
+    return fabsf(l->p1->x - p->x);
+  }
+  
+  float distSlope = -1 / lineSlope;
+  printf("slope: %f\ndistSlope: %f\n", lineSlope, distSlope); 
+  /*
+  Pixel probe = minSlope(;
+  while (!pixelInLine(p, l
+  */
+}
+
 Pixel minSlope(Pixel p1, Pixel p2) {
- 
+
   float realSlope = slope(p1, p2);
 
   if (p1->x < p2->x && p1->y < p2->y) {
