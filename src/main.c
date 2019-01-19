@@ -21,11 +21,21 @@ int main() {
 
   /* Tests */
 
+  Pixel p1 = makePixel(1000, 500);
+  Pixel p2 = makePixel(1500, 500);
+  Pixel p3 = makePixel(1000, 750);
+
+  Color red = makeColor(0xFF, 0x00, 0x00);
+
+  drawTriangle(p1, p2, p3, red);
+
+  /*
   drawLine(1000, 500, 1000, 700, 0xFF, 0x00, 0x00);
   drawLine(1250, 500, 1250, 700, 0x00, 0xFF, 0x00);
   drawLine(900, 600, 1000, 800, 0x00, 0x00, 0xFF);
   drawLine(1000, 800, 1250, 800, 0x00, 0x00, 0xFF);
   drawLine(1250, 800, 1350, 600, 0x00, 0x00, 0xFF);  
+  */
 
   return 0;
 }
@@ -34,151 +44,168 @@ int main() {
 /* Drawing utilities */
 /*********************/
 
-void drawPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
-  long loc = (x+(&vinfo)->xoffset) * ((&vinfo)->bits_per_pixel/8) + (y+(&vinfo)->yoffset) * (&finfo)->line_length; 
-  *((uint32_t*)(fbp + loc)) = pixelColor(r, g, b);
+
+void drawPixel(Pixel p, Color c) {
+  long loc = (p->x+(&vinfo)->xoffset) * ((&vinfo)->bits_per_pixel/8) + (p->y+(&vinfo)->yoffset) * (&finfo)->line_length; 
+  *((uint32_t*)(fbp + loc)) = pixelColor(c);
 }
 
-void drawLine(int x1, int y1, int x2, int y2, uint8_t r, uint8_t g, uint8_t b) {
+void drawLine(Pixel p1, Pixel p2, Color c) {
 
   // Calculate slope of src and dest
-  float realSlope = slope(x1, y1, x2, y2); 
+  float realSlope = slope(p1, p2); 
 
   // Fill source and destination
-  drawPixel(x1, y1, r, g, b);
-  drawPixel(x2, y2, r, g, b);
+  drawPixel(p1, c);
+  drawPixel(p2, c);
 
   // While we haven't gotten adjacent to the destination
-  while (!isDestAdjacent(x1, y1, x2, y2)) {
+  while (!isDestAdjacent(p1, p2)) {
     
     float minSlopeDiff = INFINITY;
-    int minSlopeX, minSlopeY;    
+    Pixel minSlope;    
 
     // Find the px with the least slope 
-    if (x1 < x2 && y1 < y2) {
+    if (p1->x < p2->x && p1->y < p2->y) {
       float slopeDiffs[3];
-      slopeDiffs[0] = fabsf(slope(x1+1, y1, x2, y2) - realSlope);
-      slopeDiffs[1] = fabsf(slope(x1, y1+1, x2, y2) - realSlope);
-      slopeDiffs[2] = fabsf(slope(x1+1, y1+1, x2, y2) - realSlope);
+      Pixel tempP1 = makePixel(p1->x+1, p1->y);
+      Pixel tempP2 = makePixel(p1->x, p1->y+1);
+      Pixel tempP3 = makePixel(p1->x+1, p1->y+1);
+      slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(tempP2, p2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(tempP3, p2) - realSlope);
      
       if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-        minSlopeX = x1+1;
-	minSlopeY = y1;
+        minSlope = tempP1;
       }
       else if (slopeDiffs[1] < slopeDiffs[2]) {
-        minSlopeX = x1;
-	minSlopeY = y1+1;
+        minSlope = tempP2;
       }
       else {
-        minSlopeX = x1+1;
-	minSlopeY = y1+1;
+        minSlope = tempP3;
       }
     }
-    else if (x1 > x2 && y1 < y2) {
+    else if (p1->x > p2->x && p1->y < p2->y) {
       float slopeDiffs[3];
-      slopeDiffs[0] = fabsf(slope(x1-1, y1, x2, y2) - realSlope);
-      slopeDiffs[1] = fabsf(slope(x1, y1+1, x2, y2) - realSlope);
-      slopeDiffs[2] = fabsf(slope(x1-1, y1+1, x2, y2) - realSlope);
+      Pixel tempP1 = makePixel(p1->x-1, p1->y);
+      Pixel tempP2 = makePixel(p1->x, p1->y+1);
+      Pixel tempP3 = makePixel(p1->x-1, p1->y+1);
+      slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(tempP2, p2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(tempP3, p2) - realSlope);
       
       if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-        minSlopeX = x1-1;
-	minSlopeY = y1;
+        minSlope = tempP1;
       }
       else if (slopeDiffs[1] < slopeDiffs[2]) {
-        minSlopeX = x1;
-	minSlopeY = y1+1;
+        minSlope = tempP2;
       }
       else {
-        minSlopeX = x1-1;
-	minSlopeY = y1+1;
+        minSlope = tempP3;
       }
     }
-    else if (x1 > x2 && y1 > y2) {
+    else if (p1->x > p2->x && p1->y > p2->y) {
       float slopeDiffs[3];
-      slopeDiffs[0] = fabsf(slope(x1-1, y1, x2, y2) - realSlope);
-      slopeDiffs[1] = fabsf(slope(x1, y1-1, x2, y2) - realSlope);
-      slopeDiffs[2] = fabsf(slope(x1-1, y1-1, x2, y2) - realSlope);
+      Pixel tempP1 = makePixel(p1->x-1, p1->y);
+      Pixel tempP2 = makePixel(p1->x, p1->y-1);
+      Pixel tempP3 = makePixel(p1->x-1, p1->y-1);
+      slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(tempP2, p2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(tempP3, p2) - realSlope);
       
       if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-        minSlopeX = x1-1;
-	minSlopeY = y1;
+	minSlope = tempP1;
       }
       else if (slopeDiffs[1] < slopeDiffs[2]) {
-        minSlopeX = x1;
-	minSlopeY = y1-1;
+        minSlope = tempP2;
       }
       else {
-        minSlopeX = x1-1;
-	minSlopeY = y1-1;
+        minSlope = tempP3;
       }
     }
-    else if (x1 < x2 && y1 > y2) {
+    else if (p1->x < p2->x && p1->y > p2->y) {
       float slopeDiffs[3];
-      slopeDiffs[0] = fabsf(slope(x1+1, y1, x2, y2) - realSlope);
-      slopeDiffs[1] = fabsf(slope(x1, y1-1, x2, y2) - realSlope);
-      slopeDiffs[2] = fabsf(slope(x1+1, y1-1, x2, y2) - realSlope);
+      Pixel tempP1 = makePixel(p1->x+1, p1->y);
+      Pixel tempP2 = makePixel(p1->x, p1->y-1);
+      Pixel tempP3 = makePixel(p1->x+1, p1->y-1);
+      slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
+      slopeDiffs[1] = fabsf(slope(tempP1, p2) - realSlope);
+      slopeDiffs[2] = fabsf(slope(tempP1, p2) - realSlope);
       
       if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-        minSlopeX = x1+1;
-	minSlopeY = y1;
+        minSlope = tempP1;
       }
       else if (slopeDiffs[1] < slopeDiffs[2]) {
-        minSlopeX = x1;
-	minSlopeY = y1-1;
+        minSlope = tempP2;
       }
       else {
-        minSlopeX = x1+1;
-	minSlopeY = y1-1;
+        minSlope = tempP3;
       }
     }
-    else if (x1 < x2) {
-      minSlopeX = x1+1;
-      minSlopeY = y1;
+    else if (p1->x < p2->x) {
+      minSlope = makePixel(p1->x+1, p1->y);
     }
-    else if (x1 > x2) {
-      minSlopeX = x1-1;
-      minSlopeY = y1;
+    else if (p1->x > p2->x) {
+      minSlope = makePixel(p1->x-1, p1->y);
     }
-    else if (y1 < y2) {
-      minSlopeX = x1;
-      minSlopeY = y1+1;
+    else if (p1->y < p2->y) {
+      minSlope = makePixel(p1->x, p1->y+1);
     }
-    else if (y1 > y2) {
-      minSlopeX = x1;
-      minSlopeY = y1-1;
+    else if (p1->y > p2->y) {
+      minSlope = makePixel(p1->x, p1->y-1);
     }
-
-    x1 = minSlopeX;
-    y1 = minSlopeY;
 
     // Color the px with the min diff
-    drawPixel(x1, y1, r, g, b);
+    drawPixel(minSlope, c);
+
+    p1 = minSlope;
 
   }
 
 }	
 
+void drawTriangle(Pixel p1, Pixel p2, Pixel p3, Color c) {
+  drawLine(p1, p2, c);
+  drawLine(p2, p3, c);
+  drawLine(p3, p1, c);
+}
+
 /*****************/
 /* Miscellaneous */
 /*****************/
 
-float slope(int x1, int y1, int x2, int y2) {
-  if (x1 == x2) {
+Color makeColor(uint8_t r, uint8_t g, uint8_t b) {
+  Color c = (Color)malloc(sizeof(struct color));
+  c->r = r;
+  c->g = g;
+  c->b = b;
+  return c;
+}
+
+Pixel makePixel(int x, int y) {
+  Pixel p = (Pixel)malloc(sizeof(struct pixel));
+  p->x = x;
+  p->y = y;
+  return p;
+}
+
+float slope(Pixel p1, Pixel p2) {
+  if (p1->x == p2->x) {
     return INFINITY;
   }
   else {
-    return (float)(y2 - y1) / (float)(x2 - x1);
+    return (float)(p2->y - p1->y) / (float)(p2->x - p1->x);
   }
 }
 
 // Checks if destination px is adjacent to source px
-int isDestAdjacent(int x1, int y1, int x2, int y2) {
-  return (abs(x1 - x2) <= 1) && (abs(y1 - y2) <= 1);
+int isDestAdjacent(Pixel p1, Pixel p2) {
+  return (abs(p1->x - p2->x) <= 1) && (abs(p1->y - p2->y) <= 1);
 }
 
 // Convert rbg value to pixel value
-uint32_t pixelColor(uint8_t r, uint8_t g, uint8_t b) {
-  return (r<<(&vinfo)->red.offset) | (g<<(&vinfo)->green.offset) | (b<<(&vinfo)->blue.offset);
+uint32_t pixelColor(Color c) {
+  return (c->r<<(&vinfo)->red.offset) | (c->g<<(&vinfo)->green.offset) | (c->b<<(&vinfo)->blue.offset);
 }
 
 void delay(int number_of_seconds) 
