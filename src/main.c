@@ -7,68 +7,82 @@ int main() {
   // Get variable screen info
   ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo);
 
-  vinfo.grayscale = 0;
-  vinfo.bits_per_pixel = 32;
+  vinfo.grayscale = 0; vinfo.bits_per_pixel = 32;
 
-  ioctl(fb_fd, FBIOPUT_VSCREENINFO, &vinfo);
-  ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo);
-  ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo);
+  ioctl(fb_fd, FBIOPUT_VSCREENINFO, &vinfo); ioctl(fb_fd, FBIOGET_VSCREENINFO,
+		  &vinfo); ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo);
 
   long screensize = finfo.smem_len;
 
   // Map the buffer to memory, returns ptr to memory
-  fbp = mmap(NULL, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
+  fbp = mmap(NULL, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd,
+		  (off_t)0);
 
   /* Tests */
 
-  Color red = makeColor(0xFF, 0x00, 0x00);
-  Pixel p1 = makePixel(1000, 500, red);
-  Pixel p2 = makePixel(1500, 500, red);
-  Pixel p3 = makePixel(1000, 750, red);
-  Line l1 = makeLine(p1, p2, red);
-  Line l2 = makeLine(p2, p3, red);
-  Line l3 = makeLine(p3, p1, red);
-  Triangle t1 = makeTriangle(l1, l2, l3, red);
-  fillTriangle(t1);
+  Color red = makeColor(0xFF, 0x00, 0x00); Pixel p1 = makePixel(1000, 500,
+		  red); Pixel p2 = makePixel(1500, 500, red); Pixel p3 =
+	  makePixel(1000, 750, red); Line l1 = makeLine(p1, p2, red); Line l2 =
+	  makeLine(p2, p3, red); Line l3 = makeLine(p3, p1, red); Triangle t1 =
+	  makeTriangle(l1, l2, l3, red);
+ 
+  drawTriangle(t1);
 
-  printf("pixelToLineDist 50: %f\n", pixelToLineDist(makePixel(1100, 550, NULL), l1));
-
-  return 0;
-}
+  return 0; }
 
 /*********************/
 /* Drawing utilities */
 /*********************/
 
 
-void drawPixel(Pixel p) {
-  long loc = (p->x+(&vinfo)->xoffset) * ((&vinfo)->bits_per_pixel/8) + (p->y+(&vinfo)->yoffset) * (&finfo)->line_length; 
-  *((uint32_t*)(fbp + loc)) = pixelColor(p->c);
-}
+void drawPixel(Pixel p) { long loc = (p->x+(&vinfo)->xoffset) *
+	((&vinfo)->bits_per_pixel/8) + (p->y+(&vinfo)->yoffset) *
+		(&finfo)->line_length; *((uint32_t*)(fbp + loc)) =
+		pixelColor(p->c); }
 
 void drawLine(Line l) {
   
-  Pixel p1 = l->p1;
-  Pixel p2 = l->p2;
+  Pixel p1 = l->p1; Pixel p2 = l->p2;
+
   // Fill source and destination
-  drawPixel(p1);
-  drawPixel(p2);
-  // While we haven't gotten adjacent to the destination
-  while (!isAdjacent(p1, p2)) {
-    
-    float minSlopeDiff = INFINITY;
+  drawPixel(p1); drawPixel(p2);
 
-    // Find the px with the least slope 
-    Pixel nextP = minSlope(p1, p2);
-
-    // Color the px with the min diff
-    nextP->c = l->c;
-    drawPixel(nextP);
-
-    p1 = nextP;
-
+  int rise = p2->y - p1->y; int run = p2->x - p1->x;
+ 
+  int riseParity = (rise < 0) ? -1 : 1; int runParity = (run < 0) ? -1 : 1;
+  
+  if (rise == 0) { 
+    for (int i = p1->x; i != p2->x; i += runParity) {
+      drawPixel(makePixel(i, p1->y, l->c)); 
+    } 
+  } 
+  else if (run == 0) {
+    printf("found run to be 0\n");
+    for (int i = p1->y; i != p2->y; i += riseParity) {
+      drawPixel(makePixel(p1->x, i, l->c));
+    }
   }
+  else {
+    int slopeGcd = gcd(rise, run);
+    if (slopeGcd != 0 && slopeGcd != INFINITY) {
+      rise /= slopeGcd;
+      run /= slopeGcd;
+    }
 
+    int x = p1->x;
+    int y = p1->y;
+  
+    // While we haven't gotten to the dest yet
+    while (!isAdjacent(makePixel(x, y, NULL), p2)) {
+      for (int i = 0; i < abs(rise); i++) {
+        for (int j = 0; j < abs(run); j++) {
+          drawPixel(makePixel(x+(j*runParity), y+(i*riseParity), l->c));
+        }
+      }
+      y += rise;
+      x += run;
+    }
+  }
 }	
 
 void drawTriangle(Triangle t) {
@@ -84,15 +98,22 @@ void fillTriangle(Triangle t) {
 
   Pixel nextP1P2 = p1;
   Pixel nextP1P3 = p1;  
+  
+  float slopeP1P2 = slope(p1, p2);
+  float slopeP1P3 = slope(p1, p3);
+  /*
   do {
     if (!isAdjacent(nextP1P2, p2)) {
-      nextP1P2 = minSlope(nextP1P2, p2);
+      printf("nextP1 not adjacent to p2\n");
+      nextP1P2 = nextPixelInSlope(nextP1P2, slopeP1P2);
     }
     if (!isAdjacent(nextP1P3, p3)) {
-      nextP1P3 = minSlope(nextP1P3, p3);
+      printf("nextP1 not adjacent to p3\n");
+      nextP1P3 = nextPixelInSlope(nextP1P3, slopeP1P3);
     }
     drawLine(makeLine(nextP1P2, nextP1P3, t->c));
   } while(!isAdjacent(nextP1P2, p2) || !isAdjacent(nextP1P3, p3));
+  */
 }
 
 Triangle rotateTriangle(Triangle t, float rad, Line axis, int direction) {
@@ -127,100 +148,6 @@ float pixelToLineDist(Pixel p, Line l) {
   Pixel probe = minSlope(;
   while (!pixelInLine(p, l
   */
-}
-
-Pixel minSlope(Pixel p1, Pixel p2) {
-
-  float realSlope = slope(p1, p2);
-
-  if (p1->x < p2->x && p1->y < p2->y) {
-    float slopeDiffs[3];
-    Pixel tempP1 = makePixel(p1->x+1, p1->y, NULL);
-    Pixel tempP2 = makePixel(p1->x, p1->y+1, NULL);
-    Pixel tempP3 = makePixel(p1->x+1, p1->y+1, NULL);
-    slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
-    slopeDiffs[1] = fabsf(slope(tempP2, p2) - realSlope);
-    slopeDiffs[2] = fabsf(slope(tempP3, p2) - realSlope);
-    
-    if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-      return tempP1;
-    }
-    else if (slopeDiffs[1] < slopeDiffs[2]) {
-      return tempP2;
-    }
-    else {
-      return tempP3;
-    }
-  }
-  else if (p1->x > p2->x && p1->y < p2->y) {
-    float slopeDiffs[3];
-    Pixel tempP1 = makePixel(p1->x-1, p1->y, NULL);
-    Pixel tempP2 = makePixel(p1->x, p1->y+1, NULL);
-    Pixel tempP3 = makePixel(p1->x-1, p1->y+1, NULL);
-    slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
-    slopeDiffs[1] = fabsf(slope(tempP2, p2) - realSlope);
-    slopeDiffs[2] = fabsf(slope(tempP3, p2) - realSlope);
-    
-    if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-      return tempP1;
-    }
-    else if (slopeDiffs[1] < slopeDiffs[2]) {
-      return tempP2;
-    }
-    else {
-      return tempP3;
-    }
-  }
-  else if (p1->x > p2->x && p1->y > p2->y) {
-    float slopeDiffs[3];
-    Pixel tempP1 = makePixel(p1->x-1, p1->y, NULL);
-    Pixel tempP2 = makePixel(p1->x, p1->y-1, NULL);
-    Pixel tempP3 = makePixel(p1->x-1, p1->y-1, NULL);
-    slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
-    slopeDiffs[1] = fabsf(slope(tempP2, p2) - realSlope);
-    slopeDiffs[2] = fabsf(slope(tempP3, p2) - realSlope);
-      
-    if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-      return tempP1;
-    }
-    else if (slopeDiffs[1] < slopeDiffs[2]) {
-      return tempP2;
-    }
-    else {
-      return tempP3;
-    }
-  }
-  else if (p1->x < p2->x && p1->y > p2->y) {
-    float slopeDiffs[3];
-    Pixel tempP1 = makePixel(p1->x+1, p1->y, NULL);
-    Pixel tempP2 = makePixel(p1->x, p1->y-1, NULL);
-    Pixel tempP3 = makePixel(p1->x+1, p1->y-1, NULL);
-    slopeDiffs[0] = fabsf(slope(tempP1, p2) - realSlope);
-    slopeDiffs[1] = fabsf(slope(tempP1, p2) - realSlope);
-    slopeDiffs[2] = fabsf(slope(tempP1, p2) - realSlope);
-    
-    if (slopeDiffs[0] < slopeDiffs[1] && slopeDiffs[0] < slopeDiffs[2]) {
-      return tempP1;
-    }
-    else if (slopeDiffs[1] < slopeDiffs[2]) {
-      return tempP2;
-    }
-    else {
-      return tempP3;
-    }
-  }
-  else if (p1->x < p2->x) {
-    return makePixel(p1->x+1, p1->y, NULL);
-  }
-  else if (p1->x > p2->x) {
-    return makePixel(p1->x-1, p1->y, NULL);
-  }
-  else if (p1->y < p2->y) {
-    return makePixel(p1->x, p1->y+1, NULL);
-  }
-  else if (p1->y > p2->y) {
-    return makePixel(p1->x, p1->y-1, NULL);
-  }
 }
 
 Color makeColor(uint8_t r, uint8_t g, uint8_t b) {
@@ -263,6 +190,25 @@ float slope(Pixel p1, Pixel p2) {
   else {
     return (float)(p2->y - p1->y) / (float)(p2->x - p1->x);
   }
+}
+
+// Calculate the greatest common divisor
+int gcd(int a, int b) {
+  if (a < 0) {
+    a = -a;
+  }
+  if (b < 0) {
+    b = -b;
+  }
+  printf("getting the gcd of %d and %d\n", a, b);
+  int res = 0;
+  for (int i = 1; i <= a && i <= b; i++) {
+    if (a % i == 0 && b % i == 0) {
+      res = i;
+    }
+  }
+  printf("found gcd to be %d\n", res); 
+  return res;
 }
 
 // Checks if destination px is adjacent to source px

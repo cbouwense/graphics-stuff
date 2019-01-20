@@ -70,8 +70,9 @@ Pixel makePixel(int x, int y, Color c);
 Line makeLine(Pixel p1, Pixel p2, Color c);
 Triangle makeTriangle(Line l1, Line l2, Line l3, Color c);
 
-Pixel minSlope(Pixel p1, Pixel p2);
+Pixel nextPixelInSlope(Pixel p, float slope);
 float slope(Pixel p1, Pixel p2);
+int gcd(int a, int b);
 int isAdjacent(Pixel p1, Pixel p2);
 uint32_t pixelColor(Color c);
 void delay(int number_of_seconds); 
