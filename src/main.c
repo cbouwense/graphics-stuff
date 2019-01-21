@@ -30,11 +30,10 @@ int main() {
   Line l3 = makeLine(p3, p1, red); 
   Triangle t1 = makeTriangle(l1, l2, l3, red);
 
-  drawLine(makeLine(makePixel(1200, 200, NULL), makePixel(1500, 451, NULL), blue));
+  //drawLine(makeLine(l3->p1, l3->p2, blue));
 
-  printf("in line? yes: %d\n", pixelInLine(makePixel(1000, 500, NULL), l3));
+  fillTriangle(t1);
 
-  drawTriangle(t1);
 
   return 0; }
 
@@ -48,29 +47,76 @@ void drawPixel(Pixel p) { long loc = (p->x+(&vinfo)->xoffset) *
 		(&finfo)->line_length; *((uint32_t*)(fbp + loc)) =
 		pixelColor(p->c); }
 
+void drawLineLow(Line l) {
+  int dx = l->p2->x - l->p1->x;
+  int dy = l->p2->y - l->p1->y;
+  int yi = 1;
+  if (dy < 0) {
+    yi = -1;
+    dy = -dy;
+  }
+  int D = 2*dy - dx;
+  int y = l->p1->y;
+
+  Pixel leftmost = (l->p1->x < l->p2->x) ? l->p1 : l->p2;
+  Pixel rightmost = (leftmost == l->p1) ? l->p2 : l->p1;
+
+  for (int x = leftmost->x; x < rightmost->x; x++) {
+    drawPixel(makePixel(x, y, l->c)); 
+    if (D > 0) {
+      y += yi;
+      D -= 2*dx;
+    }
+    D += 2*dy;
+  }
+}
+
+void drawLineHigh(Line l) {
+  int dx = l->p2->x - l->p1->x;
+  int dy = l->p2->y - l->p1->y;
+  int xi = 1;
+  if (dx < 0) {
+    xi = -1;
+    dx = -dx;
+  }
+  int D = 2*dx - dy;
+  int x = l->p1->x;
+
+  Pixel lower = (l->p1->y < l->p2->y) ? l->p1 : l->p2;
+  Pixel higher = (lower == l->p1) ? l->p2 : l->p1;
+
+  for (int y = lower->y; y < higher->y; y++) {
+    drawPixel(makePixel(x, y, l->c)); 
+    if (D > 0) {
+      x += xi;
+      D -= 2*dy;
+    }
+    D += 2*dx;
+  }
+}
+
 void drawLine(Line l) {
-  
-  Pixel p1 = l->p1;
-  Pixel p2 = l->p2;
+  int x0 = l->p1->x;
+  int y0 = l->p1->y;
+  int x1 = l->p2->x;
+  int y1 = l->p2->y;
 
-  int dx = p2->x - p1->x;
-  int dy = p2->y - p1->y;
-  int deltaErr = 2*dy - dx;
-  int y = p1->y; 
-
-  // Go from left to right
-  int x = (p1->x < p2->x) ? p1->x : p2->x;
-  Pixel rightmost = (x == p1->x) ? p2 : p1;
-
-  for (; x < rightmost->x; x++) {
-    drawPixel(makePixel(x, y, l->c));
-    if (deltaErr > 0) {
-      y++;
-      deltaErr -= 2*dx;
-    } 
-    deltaErr += 2*dy;
-  } 
-
+  if (abs(y1 - y0) < abs(x1 - x0)) {
+    if (x0 > x1) {
+      drawLineLow(makeLine(l->p2, l->p1, l->c));
+    }
+    else {
+      drawLineLow(l);
+    }
+  }
+  else {
+    if (y0 > y1) {
+      drawLineHigh(makeLine(l->p2, l->p1, l->c));
+    }
+    else {
+      drawLineHigh(l);
+    }
+  }  
 }	
 
 void drawTriangle(Triangle t) {
