@@ -20,12 +20,20 @@ int main() {
 
   /* Tests */
 
-  Color red = makeColor(0xFF, 0x00, 0x00); Pixel p1 = makePixel(1000, 500,
-		  red); Pixel p2 = makePixel(1500, 500, red); Pixel p3 =
-	  makePixel(1000, 750, red); Line l1 = makeLine(p1, p2, red); Line l2 =
-	  makeLine(p2, p3, red); Line l3 = makeLine(p3, p1, red); Triangle t1 =
-	  makeTriangle(l1, l2, l3, red);
- 
+  Color red = makeColor(0xFF, 0x00, 0x00); 
+  Color blue = makeColor(0x00, 0x00, 0xFF);
+  Pixel p1 = makePixel(1000, 500, red); 
+  Pixel p2 = makePixel(1500, 500, red); 
+  Pixel p3 = makePixel(1200, 250, red); 
+  Line l1 = makeLine(p1, p2, red); 
+  Line l2 = makeLine(p2, p3, red); 
+  Line l3 = makeLine(p3, p1, red); 
+  Triangle t1 = makeTriangle(l1, l2, l3, red);
+
+  drawLine(makeLine(makePixel(1200, 200, NULL), makePixel(1500, 451, NULL), blue));
+
+  printf("in line? yes: %d\n", pixelInLine(makePixel(1000, 500, NULL), l3));
+
   drawTriangle(t1);
 
   return 0; }
@@ -42,47 +50,27 @@ void drawPixel(Pixel p) { long loc = (p->x+(&vinfo)->xoffset) *
 
 void drawLine(Line l) {
   
-  Pixel p1 = l->p1; Pixel p2 = l->p2;
+  Pixel p1 = l->p1;
+  Pixel p2 = l->p2;
 
-  // Fill source and destination
-  drawPixel(p1); drawPixel(p2);
+  int dx = p2->x - p1->x;
+  int dy = p2->y - p1->y;
+  int deltaErr = 2*dy - dx;
+  int y = p1->y; 
 
-  int rise = p2->y - p1->y; int run = p2->x - p1->x;
- 
-  int riseParity = (rise < 0) ? -1 : 1; int runParity = (run < 0) ? -1 : 1;
-  
-  if (rise == 0) { 
-    for (int i = p1->x; i != p2->x; i += runParity) {
-      drawPixel(makePixel(i, p1->y, l->c)); 
+  // Go from left to right
+  int x = (p1->x < p2->x) ? p1->x : p2->x;
+  Pixel rightmost = (x == p1->x) ? p2 : p1;
+
+  for (; x < rightmost->x; x++) {
+    drawPixel(makePixel(x, y, l->c));
+    if (deltaErr > 0) {
+      y++;
+      deltaErr -= 2*dx;
     } 
+    deltaErr += 2*dy;
   } 
-  else if (run == 0) {
-    printf("found run to be 0\n");
-    for (int i = p1->y; i != p2->y; i += riseParity) {
-      drawPixel(makePixel(p1->x, i, l->c));
-    }
-  }
-  else {
-    int slopeGcd = gcd(rise, run);
-    if (slopeGcd != 0 && slopeGcd != INFINITY) {
-      rise /= slopeGcd;
-      run /= slopeGcd;
-    }
 
-    int x = p1->x;
-    int y = p1->y;
-  
-    // While we haven't gotten to the dest yet
-    while (!isAdjacent(makePixel(x, y, NULL), p2)) {
-      for (int i = 0; i < abs(rise); i++) {
-        for (int j = 0; j < abs(run); j++) {
-          drawPixel(makePixel(x+(j*runParity), y+(i*riseParity), l->c));
-        }
-      }
-      y += rise;
-      x += run;
-    }
-  }
 }	
 
 void drawTriangle(Triangle t) {
@@ -92,28 +80,144 @@ void drawTriangle(Triangle t) {
 }
 
 void fillTriangle(Triangle t) {
-  Pixel p1 = t->l1->p1;
-  Pixel p2 = t->l1->p2;
-  Pixel p3 = t->l2->p2;
-
-  Pixel nextP1P2 = p1;
-  Pixel nextP1P3 = p1;  
   
-  float slopeP1P2 = slope(p1, p2);
-  float slopeP1P3 = slope(p1, p3);
+  // Find the hypotenuese
+  Line hypot = t->l1;
+  
+  if (dist(t->l1->p1, t->l1->p2) < dist(t->l2->p1, t->l2->p2)) {
+    hypot = t->l2;
+  }
+
+  if (dist(hypot->p1, hypot->p2) < dist(t->l3->p1, t->l3->p2)) {
+    hypot = t->l3;
+  }
+
+  // Find direction to draw
+  Pixel rightmost = (hypot->p1->x > hypot->p2->x) ? hypot->p1 : hypot->p2;
+  Pixel leftmost = (hypot->p1->x > hypot->p2->x) ? hypot->p2 : hypot->p1;
+  printf("hypot: %p\nt->l1: %p\nt->l2: %p\nt->l3: %p\n", hypot, t->l1, t->l2, t->l3); 
+  
+  // Go left to right, shoot rays down
+  if (t->l1->p1->y < hypot->p1->y && t->l1->p1->y < hypot->p2->y || 
+      t->l1->p2->y < hypot->p1->y && t->l1->p2->y < hypot->p2->y ||
+      t->l2->p1->y < hypot->p1->y && t->l2->p1->y < hypot->p2->y ||
+      t->l2->p2->y < hypot->p1->y && t->l2->p2->y < hypot->p2->y ||
+      t->l3->p1->y < hypot->p1->y && t->l3->p1->y < hypot->p2->y || 
+      t->l3->p2->y < hypot->p1->y && t->l3->p2->y < hypot->p2->y) {
+    
+    int rise = hypot->p2->y - hypot->p1->y; 
+    int run = hypot->p2->x - hypot->p1->x;
+    int riseParity = (rise < 0) ? -1 : 1; 
+    int slopeGcd = gcd(rise, run);
+    if (slopeGcd != 0 && slopeGcd != INFINITY) {
+      rise /= slopeGcd;
+      run /= slopeGcd;
+    }
+  
+    printf("rise: %d\nrun: %d\n", rise, run);
+
+    Pixel rayBeam = makePixel(leftmost->x, leftmost->y, NULL);
+    rayBeam->x++;
+
+    int origRayBeamY;
+    for (int i = rayBeam->x; i < rightmost->x; i++) {
+      origRayBeamY = rayBeam->y;
+	    
+      // shoot ray down
+      if (hypot == t->l1) {
+	printf("rayBeam: (%d, %d)\n", rayBeam->x, rayBeam->y);
+	printf("in l2? %d\n", pixelInLine(rayBeam, t->l2));
+	printf("in l3? %d\n", pixelInLine(rayBeam, t->l3));
+        while (!pixelInLine(rayBeam, t->l2) && !pixelInLine(rayBeam, t->l3)) {
+          printf("drew pixel at (%d, %d)\n", rayBeam->x, rayBeam->y);
+	  drawPixel(makePixel(rayBeam->x, rayBeam->y, t->c));
+          rayBeam->y--;  
+        }
+      }
+      else if (hypot == t->l2) {
+        while (!pixelInLine(makePixel(rayBeam->x, rayBeam->y, NULL), t->l1) || 
+	       !pixelInLine(makePixel(rayBeam->x, rayBeam->y, NULL), t->l3)) {
+          drawPixel(makePixel(rayBeam->x, rayBeam->y, t->c));
+        }
+      }
+      else {
+        while (!pixelInLine(makePixel(rayBeam->x, rayBeam->y, NULL), t->l1) || 
+	       !pixelInLine(makePixel(rayBeam->x, rayBeam->y, NULL), t->l2)) {
+          drawPixel(makePixel(rayBeam->x, rayBeam->y, t->c));
+        }
+      }
+      
+      // Move rayBeam on the y axis if need be
+      if (rayBeam->x % run == 0) {
+        rayBeam->y = origRayBeamY + riseParity;  
+      }
+
+      // Move rayBeam to the right
+      rayBeam->x += 1;  
+
+    }
+
+  }
+  // Go from top to bottom, shoot rays left
+  else if (t->l1->p1->x < hypot->p1->x && t->l1->p1->x < hypot->p2->x ||
+           t->l1->p2->x < hypot->p1->x && t->l1->p2->x < hypot->p2->x ||
+           t->l2->p1->x < hypot->p1->x && t->l2->p1->x < hypot->p2->x ||
+           t->l2->p2->x < hypot->p1->x && t->l2->p2->x < hypot->p2->x ||
+           t->l3->p1->x < hypot->p1->x && t->l3->p1->x < hypot->p2->x || 
+           t->l3->p2->x < hypot->p1->x && t->l3->p2->x < hypot->p2->x) {
+    
+    // do stuff
+
+  }
+  // Go from top to bottom, shoot rays right
+  else if (t->l1->p1->x > hypot->p1->x && t->l1->p1->x > hypot->p2->x ||
+           t->l1->p2->x > hypot->p1->x && t->l1->p2->x > hypot->p2->x ||  
+           t->l2->p1->x > hypot->p1->x && t->l2->p1->x > hypot->p2->x ||
+           t->l2->p2->x > hypot->p1->x && t->l2->p2->x > hypot->p2->x ||
+           t->l3->p1->x > hypot->p1->x && t->l3->p1->x > hypot->p2->x ||
+           t->l3->p2->x > hypot->p1->x && t->l3->p2->x > hypot->p2->x) {
+    
+    // do stuff
+
+  }
+  // Go from left to right, shoot rays up
+  else {
+
+  }
+
   /*
-  do {
-    if (!isAdjacent(nextP1P2, p2)) {
-      printf("nextP1 not adjacent to p2\n");
-      nextP1P2 = nextPixelInSlope(nextP1P2, slopeP1P2);
+  // Draw horizontal lines in that direction from hypotenuese
+  int hypotParity = (hypot->p1->y < hypot->p2->y) ? 1 : -1;
+  int xMod = 0;
+  for (int i = 0; i < abs(hypot->p1->y - hypot->p2->y); i += hypotParity) {
+    int xMod = 0;
+    if (dirIsRight) {
+      if (hypot == t->l1) {
+        while (!pixelInLine(makePixel(hypot->p1->x+xMod, hypot->p1->y+i, NULL), t->l2) || 
+	       !pixelInLine(makePixel(hypot->p1->x+xMod, hypot->p1->y+i, NULL), t->l3)) {
+          endpoint = makePixel(hypot->p1->x+xMod, hypot->p1->y+1, NULL);
+        }
+      }
+      else if (hypot == t->l2) {
+        while (!pixelInLine(makePixel(hypot->p1->x+xMod, hypot->p1->y+i, NULL), t->l1) || 
+	       !pixelInLine(makePixel(hypot->p1->x+xMod, hypot->p1->y+i, NULL), t->l3)) {
+          endpoint = makePixel(hypot->p1->x+xMod, hypot->p1->y+1, NULL);
+        }
+      }
+      else {
+        while (!pixelInLine(makePixel(hypot->p1->x+xMod, hypot->p1->y+i, NULL), t->l1) || 
+	       !pixelInLine(makePixel(hypot->p1->x+xMod, hypot->p1->y+i, NULL), t->l2)) {
+          endpoint = makePixel(hypot->p1->x+xMod, hypot->p1->y+1, NULL);
+        }
+      }
     }
-    if (!isAdjacent(nextP1P3, p3)) {
-      printf("nextP1 not adjacent to p3\n");
-      nextP1P3 = nextPixelInSlope(nextP1P3, slopeP1P3);
+    else {
+
     }
-    drawLine(makeLine(nextP1P2, nextP1P3, t->c));
-  } while(!isAdjacent(nextP1P2, p2) || !isAdjacent(nextP1P3, p3));
-  */
+
+  }
+ */ 
+
 }
 
 Triangle rotateTriangle(Triangle t, float rad, Line axis, int direction) {
@@ -129,6 +233,15 @@ float dist(Pixel p1, Pixel p2) {
 }
 
 int pixelInLine(Pixel p, Line l) {
+  printf("p: (%d, %d)\n", p->x, p->y);
+  printf("p1: (%d, %d)\n", l->p1->x, l->p1->y);
+  printf("p2: (%d, %d)\n", l->p2->x, l->p2->y);
+  
+  if (p->x == l->p1->x && p->y == l->p1->y ||
+      p->x == l->p2->x && p->y == l->p2->y) {
+    
+    return 1;
+  } 
   return slope(p, l->p1) == slope(p, l->p2);
 }
 
